@@ -8,39 +8,43 @@ from redis.asyncio import Redis
 from config.settings import settings
 from src.bot.handlers import router as main_router
 from src.bot.middlewares import UserMiddleware
+from src.database.models import Base
+from sqlalchemy.ext.asyncio import create_async_engine
 
 async def on_startup(dispatcher: Dispatcher):
-    print("ZenithID Bot started successfully.")
+    # Initialize database tables on startup
+    engine = create_async_engine(settings.DATABASE_URL)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await engine.dispose()
+    print("ZenithID Bot: Database synced and service started.")
 
 async def on_shutdown(dispatcher: Dispatcher):
-    print("ZenithID Bot shut down gracefully.")
+    print("ZenithID Bot: Shutting down.")
 
 async def main():
-    # Use uvloop for better performance
+    # Performance optimization using uvloop
     uvloop.install()
 
-    # Initialize Redis storage for FSM
+    # Redis initialization for FSM storage
     redis = Redis.from_url(settings.REDIS_URL)
     storage = RedisStorage(redis=redis)
 
-    # Initialize bot and dispatcher
+    # Bot client initialization
     bot = Bot(
         token=settings.TELEGRAM_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher(storage=storage)
 
-    # Register middleware
+    # Middleware and Router registration
     dp.update.outer_middleware(UserMiddleware())
-
-    # Include routers
     dp.include_router(main_router)
 
-    # Register startup/shutdown hooks
+    # Register lifecycle hooks
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
-    # Start polling
     try:
         await dp.start_polling(bot)
     finally:
@@ -51,4 +55,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nShutting down...")
+        print("\nProcess interrupted by user.")
