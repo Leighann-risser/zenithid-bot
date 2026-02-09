@@ -9,5 +9,5 @@ class UserMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any]
     ) -> Any:
-        # Inject user context or rate limiting logic here
+        # Pass the update to the next handler
         return await handler(event, data)
