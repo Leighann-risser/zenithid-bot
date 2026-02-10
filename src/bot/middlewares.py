@@ -9,5 +9,4 @@ class UserMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any]
     ) -> Any:
-        # Pass the update to the next handler
         return await handler(event, data)
